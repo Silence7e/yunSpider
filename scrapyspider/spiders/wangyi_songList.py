@@ -4,8 +4,9 @@ import base64
 from scrapy import Request
 import codecs
 from scrapy import FormRequest
+from scrapy.contrib.loader import ItemLoader
 from scrapy.spiders import Spider
-from scrapyspider.items import SongItem, CommentItem
+from scrapyspider.items import SongItem, CommentItem, CommentListItem
 from Crypto.Cipher import AES
 
 
@@ -70,19 +71,85 @@ class SongSpider(Spider):
         #     song_item = SongItem()
         #     song_item['id'] = song_id
         #     song_item['name'] = song_name
-        for b in b_list:
-            song_id = b['id']
-            song_name = b['name']
-            song_item = SongItem()
-            song_item['id'] = song_id
-            song_item['name'] = song_name
-            song_item['singer'] = b['artists'][0]['name']
-            song_item['singer_id'] = b['artists'][0]['id']
-            self.songList.append(song_id)
-            text = {'username': '', 'password': '', 'rememberLogin': 'true'}
-            modulus = '00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'
-            nonce = '0CoJUm6Qyw8W8jud'
-            pub_key = '010001'
+        # for b in b_list:
+        #     song_id = b['id']
+        #     song_name = b['name']
+        #     song_item = SongItem()
+        #     song_item['id'] = song_id
+        #     song_item['name'] = song_name
+        #     song_item['singer'] = b['artists'][0]['name']
+        #     song_item['singer_id'] = b['artists'][0]['id']
+        #     self.songList.append(song_id)
+        #     text = {'username': '', 'password': '', 'rememberLogin': 'true'}
+        #     modulus = '00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'
+        #     nonce = '0CoJUm6Qyw8W8jud'
+        #     pub_key = '010001'
+        #     text = json.dumps(text)
+        #     sec_key = self.create_secret_key(16)
+        #     enc_text = self.aes_encrypt(self.aes_encrypt(text, nonce), sec_key)
+        #     enc_sec_key = self.rsa_encrypt(sec_key, pub_key, modulus)
+        #     data = {'params': enc_text, 'encSecKey': enc_sec_key}
+        #     yield FormRequest(self.generator_url(song_id),
+        #                       formdata=data,
+        #                       headers=self.headers,
+        #                       callback=lambda comment_response: self.get_all_comments(comment_response, song_item))
+        b = b_list[0]
+        song_id = b['id']
+        song_name = b['name']
+        song_item = SongItem()
+        song_item['id'] = song_id
+        song_item['name'] = song_name
+        song_item['singer'] = b['artists'][0]['name']
+        song_item['singer_id'] = b['artists'][0]['id']
+        self.songList.append(song_id)
+        text = {'username': '', 'password': '', 'rememberLogin': 'true'}
+        modulus = '00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'
+        nonce = '0CoJUm6Qyw8W8jud'
+        pub_key = '010001'
+        text = json.dumps(text)
+        sec_key = self.create_secret_key(16)
+        enc_text = self.aes_encrypt(self.aes_encrypt(text, nonce), sec_key)
+        enc_sec_key = self.rsa_encrypt(sec_key, pub_key, modulus)
+        data = {'params': enc_text, 'encSecKey': enc_sec_key}
+        yield FormRequest(self.generator_url(song_id),
+                          formdata=data,
+                          headers=self.headers,
+                          callback=lambda comment_response: self.get_all_comments(comment_response, song_item))
+
+    def parse_comments(self, response, song_item):
+        data = json.loads(str(response.body, encoding="utf-8"))
+        comments = data['comments']
+        total = data['total']
+        commentsList = CommentListItem()
+        list = []
+        commentsList['song_id'] = song_item['id']
+        for c in comments:
+            item = CommentItem()
+            item['id'] = c['commentId']
+            item['time'] = c['time']
+            item['content'] = c['content']
+            item['user_name'] = c['user']['nickname']
+            item['user_id'] = c['user']['userId']
+            self.comment_log(song_item, item)
+            list.append(item)
+        commentsList['list'] = list
+        return commentsList
+
+
+    def get_all_comments(self, response, song_item):
+        song_id = song_item['id']
+        data = json.loads(str(response.body, encoding="utf-8"))
+        comments_num = data['total']
+        if (comments_num % 20 == 0):
+            page = comments_num / 20
+        else:
+            page = int(comments_num / 20) + 1
+        modulus = '00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'
+        nonce = '0CoJUm6Qyw8W8jud'
+        pub_key = '010001'
+        for i in range(page):
+            text = {'username': '', 'password': '', 'rememberLogin': 'true', 'limit': "20"}
+            text['offset'] = str(i)
             text = json.dumps(text)
             sec_key = self.create_secret_key(16)
             enc_text = self.aes_encrypt(self.aes_encrypt(text, nonce), sec_key)
@@ -92,18 +159,6 @@ class SongSpider(Spider):
                               formdata=data,
                               headers=self.headers,
                               callback=lambda comment_response: self.parse_comments(comment_response, song_item))
-
-    def parse_comments(self, response, song_item):
-        data = json.loads(str(response.body, encoding="utf-8"))
-        comments = data['comments']
-        for c in comments:
-            item = CommentItem()
-            item['id'] = c['commentId']
-            item['time'] = c['time']
-            item['content'] = c['content']
-            item['user_name'] = c['user']['nickname']
-            item['user_id'] = c['user']['userId']
-            self.comment_log(song_item, item)
 
     @staticmethod
     def comment_log(song_item, comment_item):

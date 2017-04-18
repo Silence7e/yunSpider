@@ -43,3 +43,8 @@ class CommentItem(scrapy.Item):
     content = scrapy.Field()
     user_name = scrapy.Field()
     user_id = scrapy.Field()
+
+class CommentListItem(scrapy.Item):
+    song_id = scrapy.Field()
+    flag = scrapy.Field()
+    list = scrapy.Field()

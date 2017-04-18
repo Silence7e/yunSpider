@@ -1,14 +1,14 @@
 import os, json
 import base64
-import requests
+# import requests
 from scrapy import Request
 import codecs
 from scrapy import FormRequest
 from scrapy.spiders import Spider
 from scrapyspider.items import SongItem
 from Crypto.Cipher import AES
-from prettytable import PrettyTable
-import warnings
+# from prettytable import PrettyTable
+# import warnings
 
 class SongSpider(Spider):
     name = 'song_spider'
@@ -42,7 +42,6 @@ class SongSpider(Spider):
         nonce = '0CoJUm6Qyw8W8jud'
         pubKey = '010001'
         text = json.dumps(text)
-        # text = '{"username": "", "rememberLogin": "true", "password": ""}'
         secKey = self.createSecretKey(16)
         # secKey = '551e1d6d9864b016'
         encText = self.aesEncrypt(self.aesEncrypt(text, nonce), secKey)
