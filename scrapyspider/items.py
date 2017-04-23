@@ -27,7 +27,11 @@ class DoubanMovieItem(scrapy.Item):
 
 class PlayListItem(scrapy.Item):
     id = scrapy.Field()
+    maker = scrapy.Field()
+    flag = scrapy.Field()
     name = scrapy.Field()
+    song_list = scrapy.Field()
+    comment_list = scrapy.Field()
 
 
 class SongItem(scrapy.Item):
@@ -44,7 +48,10 @@ class CommentItem(scrapy.Item):
     user_name = scrapy.Field()
     user_id = scrapy.Field()
 
+
 class CommentListItem(scrapy.Item):
     song_id = scrapy.Field()
     flag = scrapy.Field()
     list = scrapy.Field()
+
+

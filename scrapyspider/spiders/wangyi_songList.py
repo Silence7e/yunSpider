@@ -4,7 +4,7 @@ import base64
 from scrapy import Request
 import codecs
 from scrapy import FormRequest
-from scrapy.contrib.loader import ItemLoader
+from scrapy.loader import ItemLoader
 from scrapy.spiders import Spider
 from scrapyspider.items import SongItem, CommentItem, CommentListItem
 from Crypto.Cipher import AES
@@ -120,9 +120,9 @@ class SongSpider(Spider):
         data = json.loads(str(response.body, encoding="utf-8"))
         comments = data['comments']
         total = data['total']
-        commentsList = CommentListItem()
-        list = []
-        commentsList['song_id'] = song_item['id']
+        comment_list = CommentListItem()
+        comment_list['song_id'] = song_item['id']
+        comment_list['list'] = []
         for c in comments:
             item = CommentItem()
             item['id'] = c['commentId']
@@ -130,10 +130,8 @@ class SongSpider(Spider):
             item['content'] = c['content']
             item['user_name'] = c['user']['nickname']
             item['user_id'] = c['user']['userId']
-            self.comment_log(song_item, item)
-            list.append(item)
-        commentsList['list'] = list
-        return commentsList
+            comment_list['list'].append(item)
+        return comment_list
 
 
     def get_all_comments(self, response, song_item):

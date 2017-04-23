@@ -20,6 +20,11 @@ class ScrapyspiderPipeline(object):
 
     def process_item(self, item, spider):
         postItem = dict(item)  # 把item转化成字典形式
+        list = postItem['list']
+        new_list = []
+        for u in list:
+            new_list.append(dict(u))
+        postItem['list'] = new_list
         # self.coll.insert(postItem)  # 向数据库插入一条记录
 
         json_str =json.dumps(postItem)
