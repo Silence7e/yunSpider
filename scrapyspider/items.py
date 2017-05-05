@@ -25,6 +25,11 @@ class DoubanMovieItem(scrapy.Item):
     score_num = scrapy.Field()
 
 
+class ProxyItem(scrapy.Item):
+    ip_port = scrapy.Field()
+    user_pass = scrapy.Field()
+
+
 class PlayListItem(scrapy.Item):
     id = scrapy.Field()
     maker = scrapy.Field()

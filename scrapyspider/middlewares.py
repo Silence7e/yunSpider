@@ -6,9 +6,12 @@
 # http://doc.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
+from scrapy import signals
 import random
-import base64
-from settings import PROXIES
+from scrapy.downloadermiddlewares.httpproxy import HttpProxyMiddleware
+from scrapy.downloadermiddlewares.useragent import UserAgentMiddleware
+from scrapyspider.settings import PROXIES
+from scrapyspider.settings import USER_AGENTS
 
 class ScrapyspiderSpiderMiddleware(object):
     # Not all methods need to be defined. If a method is not defined,
@@ -77,14 +80,17 @@ class RandomUserAgent(object):
         #print "**************************" + random.choice(self.agents)
         request.headers.setdefault('User-Agent', random.choice(self.agents))
 
+class UAPOOLS(UserAgentMiddleware):
+    def process_request(self, request, spider):
+        ua=random.choice(USER_AGENTS)
+        print('当前使用的user-agent是'+ua)
+        request.headers.setdefault('User-Agent',ua)
+
+
 class ProxyMiddleware(object):
-	def process_request(self, request, spider):
-		proxy = random.choice(PROXIES)
-		if proxy['user_pass'] is not None:
-			request.meta['proxy'] = "http://%s" % proxy['ip_port']
-			encoded_user_pass = base64.encodebytes(bytes(proxy['user_pass'], encoding = "utf8"))
-			request.headers['Proxy-Authorization'] = 'Basic ' + str(encoded_user_pass, encoding="utf8")
-			print("**************ProxyMiddleware have pass************" + proxy['ip_port'])
-		else:
-			print("**************ProxyMiddleware no pass************" + proxy['ip_port'])
-			request.meta['proxy'] = "http://%s" % proxy['ip_port']
+    def process_request(self, request, spider):
+        if request.url.find('music.163') != -1 and ('proxy' not in request.meta.keys()):
+            proxy = random.choice(PROXIES)
+            print("当前使用的ip是" + proxy['ip_port'] + '    url:' + request.url)
+            request.meta['proxy'] = "http://%s" % proxy['ip_port']
+

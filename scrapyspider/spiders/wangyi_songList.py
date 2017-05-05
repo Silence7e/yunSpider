@@ -4,15 +4,15 @@ import base64
 from scrapy import Request
 import codecs
 from scrapy import FormRequest
-from scrapy.loader import ItemLoader
 from scrapy.spiders import Spider
-from scrapyspider.items import SongItem, CommentItem, CommentListItem
+from scrapyspider.items import SongItem, CommentItem, CommentListItem, ProxyItem
 from Crypto.Cipher import AES
-
+from scrapyspider.settings import PROXIES
 
 class SongSpider(Spider):
     name = 'song_list'
     headers = {'Cookie': 'appver=1.5.0.75771;', 'Referer': 'http://music.163.com/'}
+    proxy_list = []
     songList = []
     playList = []
     playListUrl = 'http://music.163.com/playlist'
@@ -41,17 +41,32 @@ class SongSpider(Spider):
         return (''.join(map(lambda xx: (hex(ord(xx))[2:]), os.urandom(size).decode('iso-8859-15'))))[0:16]
 
     def start_requests(self):
-        page_max = 1
-        for i in range(0, page_max + 1):
-            # url = 'http://music.163.com/discover/playlist/?order=hot&cat=%E5%85%A8%E9%83%A8&limit=35&offset=' + str(i * 35)
-            url = 'http://music.163.com/discover/playlist/?cat=%E5%85%A8%E9%83%A8&limit=35&offset=' + str(i * 35)
-            yield Request(url, headers=self.headers)
-        # url = 'http://music.163.com/discover/playlist/?order=hot&cat=%E5%85%A8%E9%83%A8&limit=35&offset=35'
-        # yield Request(url, headers=self.headers)
+        proxy_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36',
+        }
+        url = 'http://www.xicidaili.com/nn/'
+        yield Request(url, headers=proxy_headers)
 
     def parse(self, response):
+        tr_list = response.css("#ip_list tr")[2: 50]
+        for i in tr_list:
+            item = ProxyItem()
+            item['ip_port'] = i.css("td::text").extract()[0] + ':' + i.css("td::text").extract()[1]
+            item['user_pass'] = ''
+            self.proxy_list.append(item)
+            PROXIES.append(item)
+        page_max = 0
+        for i in range(0, page_max + 1):
+            url = 'http://music.163.com/discover/playlist/?cat=%E5%85%A8%E9%83%A8&limit=35&offset=' + str(i * 35)
+            yield Request(url, headers=self.headers, callback=self.get_playlist)
+
+    def get_playlist(self, response):
         a_list = response.xpath('.//ul[@id="m-pl-container"]/li/p[@class="dec"]/a')
-        # for a in aList:
+        # for a in a_list:
+        #     play_list_id = a.xpath('@href').extract()[0].split('=')[1]
+        #     self.playList.append(play_list_id)
+        #     yield Request(self.playListUrl + '?id=' + str(play_list_id), headers=self.headers,
+        #                   callback=lambda list_response: self.parse_list(list_response, play_list_id))
         a = a_list[0]
         play_list_id = a.xpath('@href').extract()[0].split('=')[1]
         self.playList.append(play_list_id)
@@ -63,14 +78,18 @@ class SongSpider(Spider):
         return 'http://music.163.com/weapi/v1/resource/comments/R_SO_4_' + str(song_id) + '/?csrf_token='
 
     def parse_list(self, response, play_list_id):
-        a_list = response.xpath('.//ul[@class="f-hide"]/li//a')
-        b_list = json.loads(response.css('ul.f-hide + textarea::text').extract()[0])
+
+        """另一种获取方式"""
+        # a_list = response.xpath('.//ul[@class="f-hide"]/li//a')
         # for a in a_list:
         #     song_id = a.xpath('@href').extract()[0].split('=')[1]
         #     song_name = a.xpath('text()').extract()[0]
         #     song_item = SongItem()
         #     song_item['id'] = song_id
         #     song_item['name'] = song_name
+
+        b_list = json.loads(response.css('ul.f-hide + textarea::text').extract()[0])
+        b = b_list[0]
         # for b in b_list:
         #     song_id = b['id']
         #     song_name = b['name']
@@ -93,7 +112,6 @@ class SongSpider(Spider):
         #                       formdata=data,
         #                       headers=self.headers,
         #                       callback=lambda comment_response: self.get_all_comments(comment_response, song_item))
-        b = b_list[0]
         song_id = b['id']
         song_name = b['name']
         song_item = SongItem()
@@ -145,8 +163,8 @@ class SongSpider(Spider):
         modulus = '00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'
         nonce = '0CoJUm6Qyw8W8jud'
         pub_key = '010001'
+        text = {'username': '', 'password': '', 'rememberLogin': 'true', 'limit': "20"}
         for i in range(page):
-            text = {'username': '', 'password': '', 'rememberLogin': 'true', 'limit': "20"}
             text['offset'] = str(i)
             text = json.dumps(text)
             sec_key = self.create_secret_key(16)
